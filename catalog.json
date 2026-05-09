@@ -1,0 +1,66 @@
+{
+  "source": "https://github.com/CommonPaper",
+  "license": "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+  "templates": [
+    {
+      "name": "Mutual Non-Disclosure Agreement (Standard Terms)",
+      "description": "Common Paper Mutual NDA Standard Terms (Version 1.0). Bilateral confidentiality terms intended to be incorporated by reference from a signed Cover Page.",
+      "filename": "templates/Mutual-NDA.md"
+    },
+    {
+      "name": "Mutual Non-Disclosure Agreement (Cover Page)",
+      "description": "Common Paper Mutual NDA Cover Page (Version 1.0). Fillable cover page that captures the parties, purpose, term, and governing law and incorporates the MNDA Standard Terms.",
+      "filename": "templates/Mutual-NDA-coverpage.md"
+    },
+    {
+      "name": "Cloud Service Agreement (CSA)",
+      "description": "Common Paper Cloud Service Agreement Standard Terms (Version 2.1). Standard terms for selling and buying cloud software and SaaS products, used together with an Order Form Cover Page.",
+      "filename": "templates/CSA.md"
+    },
+    {
+      "name": "Design Partner Agreement",
+      "description": "Common Paper Design Partner Agreement Standard Terms. Governs early-access design partnerships where a partner uses a developing product and provides feedback in exchange for limited access.",
+      "filename": "templates/design-partner-agreement.md"
+    },
+    {
+      "name": "Service Level Agreement (SLA)",
+      "description": "Common Paper Service Level Agreement Standard Terms (Version 2.0). Designed to be used alongside the CSA, defining uptime targets, support response times, and service credit remedies.",
+      "filename": "templates/sla.md"
+    },
+    {
+      "name": "Professional Services Agreement (PSA)",
+      "description": "Common Paper Professional Services Agreement Standard Terms (Version 1.0). Master terms for engagements where one party performs services or builds deliverables under one or more SOWs.",
+      "filename": "templates/psa.md"
+    },
+    {
+      "name": "Data Processing Agreement (DPA)",
+      "description": "Common Paper Data Processing Agreement Standard Terms (Version 1.0). GDPR/UK-GDPR compliant processor terms covering subprocessing, restricted transfers (EEA SCCs and UK Addendum), security incidents, and audits.",
+      "filename": "templates/DPA.md"
+    },
+    {
+      "name": "Software License Agreement",
+      "description": "Common Paper Software License Agreement Standard Terms (Version 1.1). Standard terms for licensing on-premises or installable software, used together with an Order Form Cover Page.",
+      "filename": "templates/Software-License-Agreement.md"
+    },
+    {
+      "name": "Partnership Agreement",
+      "description": "Common Paper Partnership Agreement Standard Terms (Version 1.0). Standard terms for commercial partnerships covering each party's obligations, trademark licensing, payments, and dispute escalation.",
+      "filename": "templates/Partnership-Agreement.md"
+    },
+    {
+      "name": "Pilot Agreement",
+      "description": "Common Paper Pilot Agreement Standard Terms (Version 1.1). Short-term, evaluation-only access to a product or service before committing to a full commercial agreement.",
+      "filename": "templates/Pilot-Agreement.md"
+    },
+    {
+      "name": "Business Associate Agreement (BAA)",
+      "description": "Common Paper Business Associate Agreement Standard Terms (Version 1.0). HIPAA-required terms governing a Business Associate's handling of Protected Health Information (PHI) on behalf of a Covered Entity.",
+      "filename": "templates/BAA.md"
+    },
+    {
+      "name": "AI Addendum",
+      "description": "Common Paper AI Addendum Standard Terms (Version 1.0). Supplements an underlying agreement to govern AI service usage, including input/output ownership, model training rights, and AI-specific disclaimers.",
+      "filename": "templates/AI-Addendum.md"
+    }
+  ]
+}
