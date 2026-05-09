@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,84 @@ type Props = {
   data: NdaFormData;
   onChange: (next: NdaFormData) => void;
 };
+
+type WithYears = { kind: "years"; years: number };
+type Choice<A extends string> = WithYears | { kind: A };
+
+function isWithYears<A extends string>(c: Choice<A>): c is WithYears {
+  return c.kind === "years";
+}
+
+function YearsOrAlternativeRadio<A extends string>({
+  value,
+  onChange,
+  alternativeKind,
+  alternativeLabel,
+  yearsPrefix,
+  yearsSuffix,
+  idPrefix,
+}: {
+  value: Choice<A>;
+  onChange: (next: Choice<A>) => void;
+  alternativeKind: A;
+  alternativeLabel: string;
+  yearsPrefix?: ReactNode;
+  yearsSuffix: ReactNode;
+  idPrefix: string;
+}) {
+  const [storedYears, setStoredYears] = useState(
+    isWithYears(value) ? value.years : 1,
+  );
+
+  const yearsId = `${idPrefix}-years`;
+  const altId = `${idPrefix}-alt`;
+  const isYears = isWithYears(value);
+  const displayYears = isWithYears(value) ? value.years : storedYears;
+
+  return (
+    <RadioGroup
+      value={value.kind}
+      onValueChange={(v) =>
+        onChange(
+          v === "years"
+            ? { kind: "years", years: storedYears }
+            : { kind: alternativeKind },
+        )
+      }
+      className="grid gap-2"
+    >
+      <div className="flex items-center gap-3">
+        <RadioGroupItem value="years" id={yearsId} />
+        <Label
+          htmlFor={yearsId}
+          className="flex items-center gap-2 font-normal"
+        >
+          {yearsPrefix}
+          <Input
+            type="number"
+            min={1}
+            className="h-8 w-20"
+            value={displayYears}
+            disabled={!isYears}
+            onChange={(e) => {
+              if (!isYears) return;
+              const years = Math.max(1, Number(e.target.value) || 1);
+              setStoredYears(years);
+              onChange({ kind: "years", years });
+            }}
+          />
+          {yearsSuffix}
+        </Label>
+      </div>
+      <div className="flex items-center gap-3">
+        <RadioGroupItem value={alternativeKind} id={altId} />
+        <Label htmlFor={altId} className="font-normal">
+          {alternativeLabel}
+        </Label>
+      </div>
+    </RadioGroup>
+  );
+}
 
 function PartyFields({
   legend,
@@ -124,99 +203,27 @@ export function NdaForm({ data, onChange }: Props) {
 
           <div className="grid gap-2">
             <Label>MNDA term</Label>
-            <RadioGroup
-              value={data.mndaTerm.kind}
-              onValueChange={(v) =>
-                update(
-                  "mndaTerm",
-                  v === "years"
-                    ? { kind: "years", years: data.mndaTerm.kind === "years" ? data.mndaTerm.years : 1 }
-                    : { kind: "until-terminated" },
-                )
-              }
-              className="grid gap-2"
-            >
-              <div className="flex items-center gap-3">
-                <RadioGroupItem value="years" id="term-years" />
-                <Label htmlFor="term-years" className="flex items-center gap-2 font-normal">
-                  Expires
-                  <Input
-                    type="number"
-                    min={1}
-                    className="h-8 w-20"
-                    value={data.mndaTerm.kind === "years" ? data.mndaTerm.years : 1}
-                    disabled={data.mndaTerm.kind !== "years"}
-                    onChange={(e) => {
-                      if (data.mndaTerm.kind !== "years") return;
-                      update("mndaTerm", {
-                        kind: "years",
-                        years: Math.max(1, Number(e.target.value) || 1),
-                      });
-                    }}
-                  />
-                  year(s) from effective date
-                </Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <RadioGroupItem value="until-terminated" id="term-until" />
-                <Label htmlFor="term-until" className="font-normal">
-                  Continues until terminated
-                </Label>
-              </div>
-            </RadioGroup>
+            <YearsOrAlternativeRadio
+              value={data.mndaTerm}
+              onChange={(next) => update("mndaTerm", next)}
+              alternativeKind="until-terminated"
+              alternativeLabel="Continues until terminated"
+              yearsPrefix="Expires"
+              yearsSuffix="year(s) from effective date"
+              idPrefix="term"
+            />
           </div>
 
           <div className="grid gap-2">
             <Label>Term of confidentiality</Label>
-            <RadioGroup
-              value={data.termOfConfidentiality.kind}
-              onValueChange={(v) =>
-                update(
-                  "termOfConfidentiality",
-                  v === "years"
-                    ? {
-                        kind: "years",
-                        years:
-                          data.termOfConfidentiality.kind === "years"
-                            ? data.termOfConfidentiality.years
-                            : 1,
-                      }
-                    : { kind: "perpetuity" },
-                )
-              }
-              className="grid gap-2"
-            >
-              <div className="flex items-center gap-3">
-                <RadioGroupItem value="years" id="conf-years" />
-                <Label htmlFor="conf-years" className="flex items-center gap-2 font-normal">
-                  <Input
-                    type="number"
-                    min={1}
-                    className="h-8 w-20"
-                    value={
-                      data.termOfConfidentiality.kind === "years"
-                        ? data.termOfConfidentiality.years
-                        : 1
-                    }
-                    disabled={data.termOfConfidentiality.kind !== "years"}
-                    onChange={(e) => {
-                      if (data.termOfConfidentiality.kind !== "years") return;
-                      update("termOfConfidentiality", {
-                        kind: "years",
-                        years: Math.max(1, Number(e.target.value) || 1),
-                      });
-                    }}
-                  />
-                  year(s) from effective date (trade secrets continue)
-                </Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <RadioGroupItem value="perpetuity" id="conf-perp" />
-                <Label htmlFor="conf-perp" className="font-normal">
-                  In perpetuity
-                </Label>
-              </div>
-            </RadioGroup>
+            <YearsOrAlternativeRadio
+              value={data.termOfConfidentiality}
+              onChange={(next) => update("termOfConfidentiality", next)}
+              alternativeKind="perpetuity"
+              alternativeLabel="In perpetuity"
+              yearsSuffix="year(s) from effective date (trade secrets continue)"
+              idPrefix="conf"
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

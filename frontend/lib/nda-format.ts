@@ -1,7 +1,7 @@
 export function formatHumanDate(iso: string): string {
   if (!iso) return "[Effective Date]";
   const date = new Date(iso + "T00:00:00");
-  if (Number.isNaN(date.getTime())) return iso;
+  if (Number.isNaN(date.getTime())) return "[Effective Date]";
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",

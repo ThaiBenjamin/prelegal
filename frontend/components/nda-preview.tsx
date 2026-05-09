@@ -1,10 +1,11 @@
 "use client";
 
-import { forwardRef } from "react";
+import type { Ref } from "react";
 import type { NdaFormData } from "@/lib/nda-types";
 import { fallback, formatHumanDate, formatYears } from "@/lib/nda-format";
+import { NDA_BLOCK_ATTR, NDA_PAGE_ATTR } from "@/lib/nda-selectors";
 
-type Props = { data: NdaFormData };
+type Props = { data: NdaFormData; ref?: Ref<HTMLDivElement> };
 
 const CrossRef = ({ children }: { children: React.ReactNode }) => (
   <span className="italic text-[#1d4ed8]">{children}</span>
@@ -15,10 +16,26 @@ const SectionHeading = ({ children }: { children: React.ReactNode }) => (
 );
 
 function Block({ children }: { children: React.ReactNode }) {
+  const props = { [NDA_BLOCK_ATTR]: "" };
   return (
-    <div data-nda-block className="mb-3">
+    <div {...props} className="mb-3">
       {children}
     </div>
+  );
+}
+
+function Page({
+  kind,
+  children,
+}: {
+  kind: "cover" | "terms";
+  children: React.ReactNode;
+}) {
+  const props = { [NDA_PAGE_ATTR]: kind };
+  return (
+    <section {...props} style={pageStyle}>
+      {children}
+    </section>
   );
 }
 
@@ -67,10 +84,7 @@ function PartyBlock({ label, party }: { label: string; party: NdaFormData["party
   );
 }
 
-export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
-  { data },
-  ref,
-) {
+export function NdaPreview({ data, ref }: Props) {
   const purpose = fallback(data.purpose, "[Purpose]");
   const effectiveDate = formatHumanDate(data.effectiveDate);
   const governingLaw = fallback(data.governingLawState, "[Fill in state]");
@@ -93,7 +107,7 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
       data-nda-document
       className="mx-auto flex flex-col gap-6 bg-white text-black"
     >
-      <section data-nda-page="cover" style={pageStyle}>
+      <Page kind="cover">
         <Block>
           <h1 className="mb-3 text-center text-2xl font-bold">
             Mutual Non-Disclosure Agreement
@@ -160,9 +174,9 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             <PartyBlock label="Party 2" party={data.party2} />
           </div>
         </Block>
-      </section>
+      </Page>
 
-      <section data-nda-page="terms" style={pageStyle}>
+      <Page kind="terms">
         <Block>
           <h1 className="text-center text-xl font-bold">Standard Terms</h1>
         </Block>
@@ -352,7 +366,7 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             free to use under CC BY 4.0.
           </p>
         </Block>
-      </section>
+      </Page>
     </div>
   );
-});
+}
