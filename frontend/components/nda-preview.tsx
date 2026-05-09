@@ -11,8 +11,16 @@ const CrossRef = ({ children }: { children: React.ReactNode }) => (
 );
 
 const SectionHeading = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="mt-6 mb-2 text-base font-bold text-black">{children}</h2>
+  <h2 className="mb-2 text-base font-bold text-black">{children}</h2>
 );
+
+function Block({ children }: { children: React.ReactNode }) {
+  return (
+    <div data-nda-block className="mb-3">
+      {children}
+    </div>
+  );
+}
 
 const pageStyle: React.CSSProperties = {
   width: "8.5in",
@@ -86,73 +94,92 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
       className="mx-auto flex flex-col gap-6 bg-white text-black"
     >
       <section data-nda-page="cover" style={pageStyle}>
-        <h1 className="text-center text-2xl font-bold">
-          Mutual Non-Disclosure Agreement
-        </h1>
+        <Block>
+          <h1 className="mb-3 text-center text-2xl font-bold">
+            Mutual Non-Disclosure Agreement
+          </h1>
+          <p className="text-sm">
+            This Mutual Non-Disclosure Agreement (the &ldquo;<b>MNDA</b>
+            &rdquo;) consists of: (1) this Cover Page (&ldquo;
+            <b>Cover Page</b>&rdquo;) and (2) the Common Paper Mutual NDA
+            Standard Terms Version 1.0 (&ldquo;<b>Standard Terms</b>&rdquo;)
+            identical to those posted at
+            commonpaper.com/standards/mutual-nda/1.0. Any modifications of
+            the Standard Terms should be made on the Cover Page, which will
+            control over conflicts with the Standard Terms.
+          </p>
+        </Block>
 
-        <p className="mt-4 text-sm">
-          This Mutual Non-Disclosure Agreement (the &ldquo;<b>MNDA</b>&rdquo;)
-          consists of: (1) this Cover Page (&ldquo;<b>Cover Page</b>&rdquo;)
-          and (2) the Common Paper Mutual NDA Standard Terms Version 1.0
-          (&ldquo;<b>Standard Terms</b>&rdquo;) identical to those posted at
-          commonpaper.com/standards/mutual-nda/1.0. Any modifications of the
-          Standard Terms should be made on the Cover Page, which will control
-          over conflicts with the Standard Terms.
-        </p>
+        <Block>
+          <SectionHeading>Purpose</SectionHeading>
+          <p>{purpose}</p>
+        </Block>
 
-        <SectionHeading>Purpose</SectionHeading>
-        <p>{purpose}</p>
+        <Block>
+          <SectionHeading>Effective Date</SectionHeading>
+          <p>{effectiveDate}</p>
+        </Block>
 
-        <SectionHeading>Effective Date</SectionHeading>
-        <p>{effectiveDate}</p>
+        <Block>
+          <SectionHeading>MNDA Term</SectionHeading>
+          <p>{mndaTermText}</p>
+        </Block>
 
-        <SectionHeading>MNDA Term</SectionHeading>
-        <p>{mndaTermText}</p>
+        <Block>
+          <SectionHeading>Term of Confidentiality</SectionHeading>
+          <p>{confidentialityTermText}</p>
+        </Block>
 
-        <SectionHeading>Term of Confidentiality</SectionHeading>
-        <p>{confidentialityTermText}</p>
-
-        <SectionHeading>Governing Law &amp; Jurisdiction</SectionHeading>
-        <p>
-          <b>Governing Law:</b> State of {governingLaw}
-        </p>
-        <p>
-          <b>Jurisdiction:</b> Courts located in {jurisdiction}
-        </p>
+        <Block>
+          <SectionHeading>Governing Law &amp; Jurisdiction</SectionHeading>
+          <p>
+            <b>Governing Law:</b> State of {governingLaw}
+          </p>
+          <p>
+            <b>Jurisdiction:</b> Courts located in {jurisdiction}
+          </p>
+        </Block>
 
         {data.modifications.trim().length > 0 && (
-          <>
+          <Block>
             <SectionHeading>MNDA Modifications</SectionHeading>
             <p className="whitespace-pre-wrap">{data.modifications}</p>
-          </>
+          </Block>
         )}
 
-        <p className="mt-6 text-sm">
-          By signing this Cover Page, each party agrees to enter into this
-          MNDA as of the Effective Date.
-        </p>
+        <Block>
+          <p className="text-sm">
+            By signing this Cover Page, each party agrees to enter into this
+            MNDA as of the Effective Date.
+          </p>
+        </Block>
 
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <PartyBlock label="Party 1" party={data.party1} />
-          <PartyBlock label="Party 2" party={data.party2} />
-        </div>
+        <Block>
+          <div className="grid grid-cols-2 gap-4">
+            <PartyBlock label="Party 1" party={data.party1} />
+            <PartyBlock label="Party 2" party={data.party2} />
+          </div>
+        </Block>
       </section>
 
       <section data-nda-page="terms" style={pageStyle}>
-        <h1 className="text-center text-xl font-bold">Standard Terms</h1>
+        <Block>
+          <h1 className="text-center text-xl font-bold">Standard Terms</h1>
+        </Block>
 
-        <ol className="mt-4 list-decimal space-y-3 pl-6 text-sm">
-          <li>
-            <b>Introduction.</b> This Mutual Non-Disclosure Agreement (which
-            incorporates these Standard Terms and the Cover Page (defined
-            below)) (&ldquo;<b>MNDA</b>&rdquo;) allows each party (&ldquo;
-            <b>Disclosing Party</b>&rdquo;) to disclose or make available
-            information in connection with the <CrossRef>Purpose</CrossRef>{" "}
-            which (1) the Disclosing Party identifies to the receiving party
-            (&ldquo;<b>Receiving Party</b>&rdquo;) as &ldquo;confidential&rdquo;,
-            &ldquo;proprietary&rdquo;, or the like or (2) should be reasonably
-            understood as confidential or proprietary due to its nature and
-            the circumstances of its disclosure (&ldquo;
+        <Block>
+          <p className="text-sm">
+            <b>1. Introduction.</b> This Mutual Non-Disclosure Agreement
+            (which incorporates these Standard Terms and the Cover Page
+            (defined below)) (&ldquo;<b>MNDA</b>&rdquo;) allows each party
+            (&ldquo;<b>Disclosing Party</b>&rdquo;) to disclose or make
+            available information in connection with the{" "}
+            <CrossRef>Purpose</CrossRef> which (1) the Disclosing Party
+            identifies to the receiving party (&ldquo;
+            <b>Receiving Party</b>&rdquo;) as &ldquo;confidential&rdquo;,
+            &ldquo;proprietary&rdquo;, or the like or (2) should be
+            reasonably understood as confidential or proprietary due to its
+            nature and the circumstances of its disclosure (&ldquo;
             <b>Confidential Information</b>&rdquo;). Each party&rsquo;s
             Confidential Information also includes the existence and status
             of the parties&rsquo; discussions and information on the Cover
@@ -164,9 +191,12 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             <b>Cover Page</b>&rdquo;). Each party is identified on the Cover
             Page and capitalized terms have the meanings given herein or on
             the Cover Page.
-          </li>
-          <li>
-            <b>Use and Protection of Confidential Information.</b> The
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>2. Use and Protection of Confidential Information.</b> The
             Receiving Party shall: (a) use Confidential Information solely
             for the <CrossRef>Purpose</CrossRef>; (b) not disclose
             Confidential Information to third parties without the Disclosing
@@ -181,9 +211,12 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             Confidential Information using at least the same protections the
             Receiving Party uses for its own similar information but no less
             than a reasonable standard of care.
-          </li>
-          <li>
-            <b>Exceptions.</b> The Receiving Party&rsquo;s obligations in
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>3. Exceptions.</b> The Receiving Party&rsquo;s obligations in
             this MNDA do not apply to information that it can demonstrate:
             (a) is or becomes publicly available through no fault of the
             Receiving Party; (b) it rightfully knew or possessed prior to
@@ -192,9 +225,12 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             without confidentiality restrictions; or (d) it independently
             developed without using or referencing the Confidential
             Information.
-          </li>
-          <li>
-            <b>Disclosures Required by Law.</b> The Receiving Party may
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>4. Disclosures Required by Law.</b> The Receiving Party may
             disclose Confidential Information to the extent required by law,
             regulation or regulatory authority, subpoena or court order,
             provided (to the extent legally permitted) it provides the
@@ -203,23 +239,29 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             Party&rsquo;s expense, with the Disclosing Party&rsquo;s efforts
             to obtain confidential treatment for the Confidential
             Information.
-          </li>
-          <li>
-            <b>Term and Termination.</b> This MNDA commences on the{" "}
-            <CrossRef>Effective Date</CrossRef> and expires at the end of the{" "}
-            <CrossRef>MNDA Term</CrossRef>. Either party may terminate this
-            MNDA for any or no reason upon written notice to the other party.
-            The Receiving Party&rsquo;s obligations relating to Confidential
-            Information will survive for the{" "}
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>5. Term and Termination.</b> This MNDA commences on the{" "}
+            <CrossRef>Effective Date</CrossRef> and expires at the end of
+            the <CrossRef>MNDA Term</CrossRef>. Either party may terminate
+            this MNDA for any or no reason upon written notice to the other
+            party. The Receiving Party&rsquo;s obligations relating to
+            Confidential Information will survive for the{" "}
             <CrossRef>Term of Confidentiality</CrossRef>, despite any
             expiration or termination of this MNDA.
-          </li>
-          <li>
-            <b>Return or Destruction of Confidential Information.</b> Upon
-            expiration or termination of this MNDA or upon the Disclosing
-            Party&rsquo;s earlier request, the Receiving Party will: (a)
-            cease using Confidential Information; (b) promptly after the
-            Disclosing Party&rsquo;s written request, destroy all
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>6. Return or Destruction of Confidential Information.</b>{" "}
+            Upon expiration or termination of this MNDA or upon the
+            Disclosing Party&rsquo;s earlier request, the Receiving Party
+            will: (a) cease using Confidential Information; (b) promptly
+            after the Disclosing Party&rsquo;s written request, destroy all
             Confidential Information in the Receiving Party&rsquo;s
             possession or control or return it to the Disclosing Party; and
             (c) if requested by the Disclosing Party, confirm its compliance
@@ -228,45 +270,60 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             accordance with its standard backup or record retention policies
             or as required by law, but the terms of this MNDA will continue
             to apply to the retained Confidential Information.
-          </li>
-          <li>
-            <b>Proprietary Rights.</b> The Disclosing Party retains all of
-            its intellectual property and other rights in its Confidential
-            Information and its disclosure to the Receiving Party grants no
-            license under such rights.
-          </li>
-          <li>
-            <b>Disclaimer.</b> ALL CONFIDENTIAL INFORMATION IS PROVIDED
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>7. Proprietary Rights.</b> The Disclosing Party retains all
+            of its intellectual property and other rights in its
+            Confidential Information and its disclosure to the Receiving
+            Party grants no license under such rights.
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>8. Disclaimer.</b> ALL CONFIDENTIAL INFORMATION IS PROVIDED
             &ldquo;AS IS&rdquo;, WITH ALL FAULTS, AND WITHOUT WARRANTIES,
             INCLUDING THE IMPLIED WARRANTIES OF TITLE, MERCHANTABILITY AND
             FITNESS FOR A PARTICULAR PURPOSE.
-          </li>
-          <li>
-            <b>Governing Law and Jurisdiction.</b> This MNDA and all matters
-            relating hereto are governed by, and construed in accordance
-            with, the laws of the State of {governingLaw}, without regard to
-            the conflict of laws provisions of such State of {governingLaw}.
-            Any legal suit, action, or proceeding relating to this MNDA must
-            be instituted in the federal or state courts located in{" "}
-            {jurisdiction}. Each party irrevocably submits to the exclusive
-            jurisdiction of such courts in any such suit, action, or
-            proceeding.
-          </li>
-          <li>
-            <b>Equitable Relief.</b> A breach of this MNDA may cause
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>9. Governing Law and Jurisdiction.</b> This MNDA and all
+            matters relating hereto are governed by, and construed in
+            accordance with, the laws of the State of {governingLaw},
+            without regard to the conflict of laws provisions of such State
+            of {governingLaw}. Any legal suit, action, or proceeding
+            relating to this MNDA must be instituted in the federal or state
+            courts located in {jurisdiction}. Each party irrevocably submits
+            to the exclusive jurisdiction of such courts in any such suit,
+            action, or proceeding.
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>10. Equitable Relief.</b> A breach of this MNDA may cause
             irreparable harm for which monetary damages are an insufficient
             remedy. Upon a breach of this MNDA, the Disclosing Party is
             entitled to seek appropriate equitable relief, including an
             injunction, in addition to its other remedies.
-          </li>
-          <li>
-            <b>General.</b> Neither party has an obligation under this MNDA
-            to disclose Confidential Information to the other or proceed
-            with any proposed transaction. Neither party may assign this
-            MNDA without the prior written consent of the other party,
-            except that either party may assign this MNDA in connection with
-            a merger, reorganization, acquisition or other transfer of all
-            or substantially all its assets or voting securities. Any
+          </p>
+        </Block>
+
+        <Block>
+          <p className="text-sm">
+            <b>11. General.</b> Neither party has an obligation under this
+            MNDA to disclose Confidential Information to the other or
+            proceed with any proposed transaction. Neither party may assign
+            this MNDA without the prior written consent of the other party,
+            except that either party may assign this MNDA in connection
+            with a merger, reorganization, acquisition or other transfer of
+            all or substantially all its assets or voting securities. Any
             assignment in violation of this Section is null and void. This
             MNDA will bind and inure to the benefit of each party&rsquo;s
             permitted successors and assigns. Waivers must be signed by the
@@ -282,17 +339,19 @@ export const NdaPreview = forwardRef<HTMLDivElement, Props>(function NdaPreview(
             modified, waived, or supplemented by an agreement in writing
             signed by both parties. Notices, requests and approvals under
             this MNDA must be sent in writing to the email or postal
-            addresses on the Cover Page and are deemed delivered on receipt.
-            This MNDA may be executed in counterparts, including electronic
-            copies, each of which is deemed an original and which together
-            form the same agreement.
-          </li>
-        </ol>
+            addresses on the Cover Page and are deemed delivered on
+            receipt. This MNDA may be executed in counterparts, including
+            electronic copies, each of which is deemed an original and
+            which together form the same agreement.
+          </p>
+        </Block>
 
-        <p className="mt-8 text-center text-xs text-gray-600">
-          Common Paper Mutual Non-Disclosure Agreement (Version 1.0) — free
-          to use under CC BY 4.0.
-        </p>
+        <Block>
+          <p className="mt-4 text-center text-xs text-gray-600">
+            Common Paper Mutual Non-Disclosure Agreement (Version 1.0) —
+            free to use under CC BY 4.0.
+          </p>
+        </Block>
       </section>
     </div>
   );
