@@ -1,0 +1,12 @@
+services:
+  prelegal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prelegal:latest
+    container_name: prelegal
+    ports:
+      - "8000:8000"
+    environment:
+      PRELEGAL_DB_PATH: /tmp/prelegal.db
+    restart: unless-stopped

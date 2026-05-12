@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { NdaForm } from "@/components/nda-form";
 import { NdaPreview } from "@/components/nda-preview";
 import { defaultFormData } from "@/lib/nda-defaults";
 import type { NdaFormData } from "@/lib/nda-types";
 import { downloadElementAsPdf } from "@/lib/pdf";
+import { clearUser, loadUser, type User } from "@/lib/auth";
 
 function buildFilename(data: NdaFormData): string {
   const slug = (s: string) =>
@@ -17,9 +19,24 @@ function buildFilename(data: NdaFormData): string {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [data, setData] = useState<NdaFormData>(defaultFormData);
   const [isGenerating, setIsGenerating] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const u = loadUser();
+    if (!u) {
+      router.replace("/login");
+      return;
+    }
+    setUser(u);
+    setAuthChecked(true);
+    // Run once on mount; useRouter() returns a stable reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDownload = async () => {
     if (!previewRef.current) return;
@@ -34,6 +51,13 @@ export default function Home() {
     }
   };
 
+  const handleSignOut = () => {
+    clearUser();
+    router.replace("/login");
+  };
+
+  if (!authChecked || !user) return null;
+
   return (
     <div className="min-h-screen bg-zinc-100">
       <header className="border-b bg-white">
@@ -46,9 +70,17 @@ export default function Home() {
               Fill in the details, preview the agreement, and download a PDF.
             </p>
           </div>
-          <Button onClick={handleDownload} disabled={isGenerating}>
-            {isGenerating ? "Generating…" : "Download PDF"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              Signed in as <span className="font-medium text-foreground">{user.name}</span>
+            </span>
+            <Button variant="outline" onClick={handleSignOut}>
+              Sign out
+            </Button>
+            <Button onClick={handleDownload} disabled={isGenerating}>
+              {isGenerating ? "Generating…" : "Download PDF"}
+            </Button>
+          </div>
         </div>
       </header>
 
