@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { NdaForm } from "@/components/nda-form";
+import { NdaChat } from "@/components/nda-chat";
 import { NdaPreview } from "@/components/nda-preview";
 import { defaultFormData } from "@/lib/nda-defaults";
 import type { NdaFormData } from "@/lib/nda-types";
@@ -67,7 +67,7 @@ export default function Home() {
               Mutual NDA Creator
             </h1>
             <p className="text-sm text-muted-foreground">
-              Fill in the details, preview the agreement, and download a PDF.
+              Chat with the assistant, watch the agreement build itself, and download a PDF.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -85,8 +85,8 @@ export default function Home() {
       </header>
 
       <main className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-2">
-        <section aria-label="NDA inputs" className="space-y-4">
-          <NdaForm data={data} onChange={setData} />
+        <section aria-label="NDA chat" className="space-y-4">
+          <NdaChat data={data} onChange={setData} />
         </section>
 
         <section

@@ -9,4 +9,7 @@ services:
       - "8000:8000"
     environment:
       PRELEGAL_DB_PATH: /tmp/prelegal.db
+    env_file:
+      - path: .env
+        required: false
     restart: unless-stopped

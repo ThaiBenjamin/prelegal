@@ -26,14 +26,15 @@ describe("<Home /> (page integration)", () => {
     saveUser({ name: "Test User" });
   });
 
-  it("renders the form, the live preview, and a Download PDF action", async () => {
+  it("renders the chat, the live preview, and a Download PDF action", async () => {
     render(<Home />);
     await waitFor(() =>
       expect(screen.getByText("Mutual NDA Creator")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Mutual NDA Creator")).toBeInTheDocument();
-    expect(screen.getAllByText("Party 1").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Party 2").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Chat to draft your NDA/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/I'll help you put together a Mutual NDA/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Download PDF/i }),
     ).toBeInTheDocument();
@@ -47,56 +48,26 @@ describe("<Home /> (page integration)", () => {
 
   it("shows the signed-in name and a Sign out action", async () => {
     render(<Home />);
-    await waitFor(() => expect(screen.getByText(/Signed in as/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Signed in as/i)).toBeInTheDocument(),
+    );
     expect(screen.getByText("Test User")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Sign out/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Sign out/i }),
+    ).toBeInTheDocument();
   });
 
   it("clears the user and redirects on Sign out", async () => {
     const user = userEvent.setup();
     render(<Home />);
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /Sign out/i })).toBeInTheDocument(),
+      expect(
+        screen.getByRole("button", { name: /Sign out/i }),
+      ).toBeInTheDocument(),
     );
     await user.click(screen.getByRole("button", { name: /Sign out/i }));
     expect(window.localStorage.getItem("prelegal:user")).toBeNull();
     expect(routerReplace).toHaveBeenCalledWith("/login");
-  });
-
-  it("updates the preview as the user fills the form", async () => {
-    const user = userEvent.setup();
-    render(<Home />);
-
-    await waitFor(() =>
-      expect(screen.getAllByLabelText(/Company/i).length).toBeGreaterThan(0),
-    );
-
-    const company1 = screen.getAllByLabelText(/Company/i)[0];
-    await user.type(company1, "Acme, Inc.");
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Acme, Inc.").length).toBeGreaterThan(0);
-    });
-  });
-
-  it("calls the PDF download helper with a slugged filename derived from party names", async () => {
-    const user = userEvent.setup();
-    render(<Home />);
-
-    await waitFor(() =>
-      expect(screen.getAllByLabelText(/Company/i).length).toBeGreaterThan(0),
-    );
-
-    const [c1, c2] = screen.getAllByLabelText(/Company/i);
-    await user.type(c1, "Acme, Inc.");
-    await user.type(c2, "Globex Corp.");
-
-    const button = screen.getByRole("button", { name: /Download PDF/i });
-    await user.click(button);
-
-    await waitFor(() => expect(downloadMock).toHaveBeenCalledTimes(1));
-    const [, filename] = downloadMock.mock.calls[0];
-    expect(filename).toBe("mutual-nda-acme-inc-globex-corp.pdf");
   });
 
   it("falls back to party1/party2 in the filename when company names are blank", async () => {

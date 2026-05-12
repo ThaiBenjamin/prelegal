@@ -6,11 +6,26 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .db import init_db
-from .routes import health
+from .routes import chat, health
+
+
+def _load_env() -> None:
+    """Load secrets from the project-root .env, if present.
+
+    Local dev relies on this; in Docker the variables are injected via
+    docker-compose env_file so .env is absent from the image (no-op then).
+    """
+    candidate = Path(__file__).resolve().parent.parent.parent / ".env"
+    if candidate.is_file():
+        load_dotenv(candidate)
+
+
+_load_env()
 
 
 def _resolve_static_dir() -> Path | None:
@@ -43,6 +58,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Prelegal", lifespan=lifespan)
 app.include_router(health.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 _static_dir = _resolve_static_dir()
 if _static_dir is not None:

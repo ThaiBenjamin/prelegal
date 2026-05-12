@@ -1,21 +1,23 @@
-# Manual test checklist — Mutual NDA creator
+# Manual test checklist — Mutual NDA creator (AI chat)
 
-These cover the flows that the automated suite cannot exercise: real
-browser layout, html2canvas-based capture, jsPDF rendering, and the
-actual download UX.
+Automated tests cover the chat plumbing, the field merge, and the PDF
+download. These manual checks cover what they can't: a real LLM
+round-trip, real browser rendering, html2canvas capture, and jsPDF
+output.
 
 ## Setup
 
 ```bash
-cd frontend
-npm install         # if you haven't yet
-npm run dev         # http://localhost:3000
+# from repo root
+./scripts/start-mac.sh         # (or start-linux.sh / start-windows.ps1)
+# open http://localhost:8000
 ```
 
-Run each block in **Chrome**, **Firefox**, and **Safari** (or at least
-Chrome + one other) — html2canvas-pro behaves slightly differently per
-engine. Keep DevTools console open; flag any errors or warnings that
-weren't already there on a clean load.
+Make sure `OPENROUTER_API_KEY` is set in `.env` at the repo root — the
+backend reads it via `python-dotenv` and docker-compose passes it
+through `env_file`.
+
+Test in **Chrome** and at least one of **Firefox** or **Safari**.
 
 ---
 
@@ -23,126 +25,86 @@ weren't already there on a clean load.
 
 - [ ] Page loads with no console errors.
 - [ ] Header reads "Mutual NDA Creator".
-- [ ] Two columns visible: form on the left, document preview on the right.
-- [ ] Preview shows two visually-distinct page-sized panels (cover page +
-      Standard Terms) separated by a small gap.
-- [ ] Effective Date field is pre-filled with today's date.
-- [ ] MNDA Term radio is on **Expires N year(s)** with `1` in the input.
-- [ ] Term of Confidentiality radio is on **N year(s) ...** with `1` in the input.
+- [ ] Left column shows a chat panel with one assistant greeting:
+      "Hi! I'll help you put together a Mutual NDA. To start, who are
+      the two companies entering this agreement?"
+- [ ] Right column shows the document preview (cover page + Standard
+      Terms) with empty/blank fields.
 
-## 2. Form ↔ preview live binding
+## 2. Chat → preview live binding (happy path)
 
-- [ ] Type "Acme, Inc." into Party 1 → Company. The Party 1 signature
-      block in the preview updates as you type.
-- [ ] Type a Party 1 signatory name, title, notice address. Each lands
-      in the right slot of the preview.
-- [ ] Repeat for Party 2 — values land in the Party 2 block, not Party 1.
-- [ ] Edit the Purpose textarea — preview updates after each keystroke.
-- [ ] Pick a different Effective Date — preview shows it as e.g.
-      "May 9, 2026" (not the raw `2026-05-09`).
-- [ ] Type Governing Law = "Delaware" — appears in the cover page AND
-      twice in section 9 of the Standard Terms.
-- [ ] Type Jurisdiction = "New Castle, Delaware" — appears in cover
-      page and section 9 of the Standard Terms.
-- [ ] Add some Modifications text — a new "MNDA Modifications" block
-      appears in the cover page preview. Clear the textarea — the
+Answer the assistant's questions in plain English. After each user
+message:
+
+- [ ] Send button briefly says "Sending..." and disables. A "Thinking..."
+      bubble appears, then is replaced by the assistant's reply.
+- [ ] The assistant's reply renders in the chat scroll area.
+- [ ] When the assistant writes a field, the preview on the right
+      updates accordingly (Party 1 / Party 2 names, Purpose, Effective
+      Date, MNDA Term, Term of Confidentiality, Governing Law,
+      Jurisdiction).
+- [ ] After both parties' details, purpose, term, and governing law
+      are filled, the preview reads as a complete agreement.
+
+## 3. Field-specific extraction
+
+Verify the assistant correctly handles each field type by giving it
+plain-English answers:
+
+- [ ] Company names with punctuation: "Acme, Inc." and "Globex Corp."
+      → land in the right Party slots.
+- [ ] Purpose given conversationally ("we're evaluating a possible
+      cloud-services partnership") → preview shows it as the Purpose.
+- [ ] An effective date like "May 15, 2026" or "next Monday" → preview
+      shows the formatted human date (e.g., "May 15, 2026").
+- [ ] "Make the MNDA expire in 3 years" → preview MNDA Term reads
+      "Expires 3 years from the Effective Date."
+- [ ] "Actually, let it run until either party terminates" → preview
+      MNDA Term switches to "Continues until terminated...".
+- [ ] "Keep confidentiality in perpetuity" → preview Term of
+      Confidentiality reads "In perpetuity.".
+- [ ] "Governed by Delaware law, courts in New Castle" → both
+      Governing Law and Jurisdiction populate on the cover page and in
+      section 9 of the Standard Terms.
+
+## 4. Corrections
+
+- [ ] Mid-conversation, say "Actually the Party 1 company is Initech,
+      not Acme". The preview Party 1 Company updates to "Initech".
+- [ ] Ask to clear modifications: the preview's MNDA Modifications
       block disappears.
 
-## 3. MNDA Term + Term of Confidentiality switching
+## 5. Conversation lifecycle
 
-- [ ] Click "Continues until terminated" — preview MNDA Term reads
-      "Continues until terminated in accordance with the terms of this
-      MNDA.". The years input is now disabled (greyed out, can't type).
-- [ ] Click "Expires" — years input re-enables; preview reverts to
-      "Expires 1 year from the Effective Date."
-- [ ] Change the years input to 3 — preview reads "Expires 3 years
-      from the Effective Date."
-- [ ] Type a single-digit year (`5`) into the years input directly.
-      Preview updates.
-- [ ] Try entering `0` or non-numeric — input clamps to `1` and
-      preview reflects "1 year".
-- [ ] Click "In perpetuity" under Term of Confidentiality — preview
-      reads "In perpetuity.".
-- [ ] Click back to years — preview reads "1 year(s) ... but in the
-      case of trade secrets ...".
+- [ ] Long press Enter (Shift+Enter) inserts a newline rather than
+      submitting.
+- [ ] The composer auto-scrolls the conversation to the bottom when
+      new messages arrive.
+- [ ] Refresh the page — chat history resets to just the greeting
+      (in-memory only).
 
-## 4. Filename derivation
+## 6. Error path
 
-- [ ] Fill both Party 1 + Party 2 Company fields with simple ASCII
-      ("Acme, Inc.", "Globex Corp."). Click **Download PDF** — file
-      saves as `mutual-nda-acme-inc-globex-corp.pdf`.
-- [ ] Leave both Company fields blank — file saves as
-      `mutual-nda-party1-party2.pdf`.
-- [ ] Use a unicode/emoji company name (e.g. "Café 🚀 Ltd."). The slug
-      drops the unicode, leaving readable ASCII.
-- [ ] Use a single-word lowercase company name. Slug is just that word.
+- [ ] Stop the backend container (`docker compose stop`). Send a
+      message → an error bubble appears in the chat
+      ("Error: Request failed: ..."). The preview is unchanged.
+- [ ] Unset `OPENROUTER_API_KEY`, restart, send a message → error
+      bubble reads "Error: OPENROUTER_API_KEY is not configured on the
+      server.".
+- [ ] Restore the key, the next user message succeeds.
 
-## 5. PDF output — content fidelity
+## 7. PDF output
 
-Open the downloaded PDF in a viewer (Chrome, Acrobat, Preview).
+Once the document is fully filled via chat:
 
-- [ ] Page 1 starts with **Mutual Non-Disclosure Agreement** centered.
-- [ ] Page 1 contains the cover-page Purpose, Effective Date, MNDA
-      Term, Term of Confidentiality, Governing Law & Jurisdiction blocks.
-- [ ] Modifications block appears on page 1 ONLY when the form had
-      modifications text.
-- [ ] Both signature blocks (Party 1 + Party 2) render side-by-side
-      with all entered values present.
-- [ ] **Standard Terms** title sits at the top of its own page —
-      never on the same page as cover content.
-- [ ] All 11 numbered Standard Terms appear in order (1 through 11).
-- [ ] CC BY 4.0 footer appears at the end.
+- [ ] Click **Download PDF**. File saves with a slugged filename
+      derived from the party companies (e.g.
+      `mutual-nda-acme-inc-globex-corp.pdf`).
+- [ ] Open the PDF: page 1 is the cover page, page 2+ is Standard
+      Terms; numbered terms 1-11 all present.
+- [ ] No paragraph split mid-sentence across page boundaries.
 
-## 6. PDF output — page breaks (the bug we fixed)
+## 8. Sign out
 
-- [ ] **No paragraph is split mid-sentence across a page boundary.**
-      Inspect every page boundary; each should fall in the gap *between*
-      paragraphs, not through one.
-- [ ] In particular, section 8 (Disclaimer) renders as a single,
-      complete block — verify it's not cut between "AS IS" and
-      "PARTICULAR PURPOSE".
-- [ ] Section 11 (General) is the longest paragraph; verify it sits
-      whole on whichever page it lands, not split.
-
-## 7. Edge cases
-
-- [ ] Fill Modifications with a very long string (~500 words). The
-      Modifications block in the PDF either stays whole on a page, or
-      (if it exceeds one page) tiles cleanly across pages with the
-      page top margin intact and no content clipped at the bottom.
-- [ ] Fill Notice Address with a multi-line address (use Shift+Enter
-      for line breaks). PDF preserves the line breaks.
-- [ ] Set Effective Date to far past (`1990-01-01`) and far future
-      (`2099-12-31`) — preview and PDF both render the formatted date.
-- [ ] Click **Download PDF** twice in quick succession — second click
-      is gated by the "Generating…" button label until the first
-      completes; no overlap or duplicate downloads.
-- [ ] Trigger an error path: open DevTools, throw a network error
-      somewhere, and verify the failure path shows an alert ("Could
-      not generate PDF…") rather than silently failing.
-
-## 8. Responsive
-
-- [ ] Resize the browser to <1024px wide. Form and preview stack
-      vertically (preview below form). Both still scrollable.
-- [ ] At desktop width, preview is sticky on scroll while the form
-      scrolls independently.
-
-## 9. Accessibility (smoke check)
-
-- [ ] Tab through the form — every input is reachable in a sensible order.
-- [ ] Each input has a visible label associated with it (no orphan
-      placeholders).
-- [ ] The Download PDF button is reachable via Tab and triggers on
-      Enter/Space.
-- [ ] Radio groups: arrow keys navigate between options; Space selects.
-
-## 10. Visual polish
-
-- [ ] On-screen preview uses a serif font (Times-like), 11pt-ish, with
-      the same look as the PDF.
-- [ ] No layout glitch when toggling MNDA Term / Term of
-      Confidentiality (no jumping, no flicker).
-- [ ] Form card titles ("Party 1", "Party 2", "Agreement details") are
-      visually distinct from the preview's signature-block label
-      "Party 1" / "Party 2".
+- [ ] "Sign out" clears localStorage and redirects to `/login`.
+- [ ] Logging back in lands on a fresh chat (greeting only).
