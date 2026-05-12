@@ -15,9 +15,15 @@ land on after signing in.
 
 ## Run with Docker
 
-You need Docker (and Docker Compose v2) installed **and the Docker
-daemon running** — on Windows/macOS this means Docker Desktop must be
-launched before invoking the scripts. Then, from the project root:
+You need:
+
+- Docker (and Docker Compose v2) installed **with the daemon running**
+  (on Windows/macOS, launch Docker Desktop first).
+- Node.js 20+ and `npm` on the host. The start scripts build the
+  static Next.js export on the host (`frontend/out/`) and Docker only
+  runs the FastAPI backend.
+
+Then, from the project root:
 
 ### macOS
 

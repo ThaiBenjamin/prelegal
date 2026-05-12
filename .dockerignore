@@ -7,7 +7,6 @@
 **/.mypy_cache
 **/dist
 **/build
-**/out
 **/coverage
 **/.turbo
 **/.vercel
