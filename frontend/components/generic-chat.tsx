@@ -10,28 +10,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import type { NdaFormData } from "@/lib/nda-types";
+import type { Document } from "@/lib/documents";
 import {
-  applyUpdates,
-  sendChat,
+  applyDocUpdates,
+  sendDocChat,
   type ChatMessage,
-} from "@/lib/nda-chat";
+  type DocFormData,
+} from "@/lib/generic-chat";
 
-const GREETING: ChatMessage = {
-  role: "assistant",
-  content:
-    "Hi! I'll help you put together a Mutual NDA. To start, who are the two companies entering this agreement?",
-};
-
-const NDA_DOCUMENT_ID = "mutual-nda";
-
-type DisplayMessage =
-  | ChatMessage
-  | { role: "system"; content: string };
+type DisplayMessage = ChatMessage | { role: "system"; content: string };
 
 type Props = {
-  data: NdaFormData;
-  onChange: (next: NdaFormData) => void;
+  doc: Document;
+  data: DocFormData;
+  onChange: (next: DocFormData) => void;
 };
 
 function isChatMessage(m: DisplayMessage): m is ChatMessage {
@@ -55,8 +47,21 @@ function Bubble({ message }: { message: DisplayMessage }) {
   );
 }
 
-export function NdaChat({ data, onChange }: Props) {
-  const [messages, setMessages] = useState<DisplayMessage[]>([GREETING]);
+function buildGreeting(doc: Document): ChatMessage {
+  const firstField = doc.fields[0];
+  const opener = firstField
+    ? `To start, what is the ${firstField.label}?`
+    : "What would you like to fill in first?";
+  return {
+    role: "assistant",
+    content: `Hi! I'll help you fill out a ${doc.shortName}. ${opener}`,
+  };
+}
+
+export function GenericChat({ doc, data, onChange }: Props) {
+  const [messages, setMessages] = useState<DisplayMessage[]>(() => [
+    buildGreeting(doc),
+  ]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -68,9 +73,6 @@ export function NdaChat({ data, onChange }: Props) {
     }
   }, [messages, pending]);
 
-  // After a turn completes (pending: true -> false) the disabled textarea
-  // is re-enabled; refocus so the user can answer the next question without
-  // grabbing the mouse.
   useEffect(() => {
     if (!pending) inputRef.current?.focus();
   }, [pending]);
@@ -89,12 +91,12 @@ export function NdaChat({ data, onChange }: Props) {
     setPending(true);
 
     try {
-      const response = await sendChat({
+      const response = await sendDocChat({
         messages: transcript,
         currentData: data,
-        documentId: NDA_DOCUMENT_ID,
+        documentId: doc.id,
       });
-      onChange(applyUpdates(data, response.updates));
+      onChange(applyDocUpdates(data, response.updates));
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: response.reply },
@@ -126,7 +128,7 @@ export function NdaChat({ data, onChange }: Props) {
   return (
     <Card className="flex h-[calc(100vh-9rem)] flex-col">
       <CardHeader>
-        <CardTitle>Chat to draft your NDA</CardTitle>
+        <CardTitle>Chat to draft your {doc.shortName}</CardTitle>
         <p className="text-sm text-muted-foreground">
           Answer in your own words. The preview on the right updates as fields are filled.
         </p>

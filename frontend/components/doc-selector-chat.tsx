@@ -10,28 +10,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import type { NdaFormData } from "@/lib/nda-types";
-import {
-  applyUpdates,
-  sendChat,
-  type ChatMessage,
-} from "@/lib/nda-chat";
+import { DOCUMENTS } from "@/lib/documents";
+import { sendSelectorChat, type ChatMessage } from "@/lib/generic-chat";
 
 const GREETING: ChatMessage = {
   role: "assistant",
   content:
-    "Hi! I'll help you put together a Mutual NDA. To start, who are the two companies entering this agreement?",
+    "Hi! What kind of legal document do you want to draft today? I can help with any of these:\n\n" +
+    DOCUMENTS.map((d) => `• ${d.shortName} — ${d.description}`).join(
+      "\n",
+    ) +
+    "\n\nIf you describe what you're trying to do (e.g. \"I'm hiring a contractor\"), I'll suggest the closest fit.",
 };
 
-const NDA_DOCUMENT_ID = "mutual-nda";
-
-type DisplayMessage =
-  | ChatMessage
-  | { role: "system"; content: string };
+type DisplayMessage = ChatMessage | { role: "system"; content: string };
 
 type Props = {
-  data: NdaFormData;
-  onChange: (next: NdaFormData) => void;
+  onSelect: (documentId: string) => void;
 };
 
 function isChatMessage(m: DisplayMessage): m is ChatMessage {
@@ -55,7 +50,7 @@ function Bubble({ message }: { message: DisplayMessage }) {
   );
 }
 
-export function NdaChat({ data, onChange }: Props) {
+export function DocSelectorChat({ onSelect }: Props) {
   const [messages, setMessages] = useState<DisplayMessage[]>([GREETING]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
@@ -68,9 +63,6 @@ export function NdaChat({ data, onChange }: Props) {
     }
   }, [messages, pending]);
 
-  // After a turn completes (pending: true -> false) the disabled textarea
-  // is re-enabled; refocus so the user can answer the next question without
-  // grabbing the mouse.
   useEffect(() => {
     if (!pending) inputRef.current?.focus();
   }, [pending]);
@@ -89,16 +81,14 @@ export function NdaChat({ data, onChange }: Props) {
     setPending(true);
 
     try {
-      const response = await sendChat({
-        messages: transcript,
-        currentData: data,
-        documentId: NDA_DOCUMENT_ID,
-      });
-      onChange(applyUpdates(data, response.updates));
+      const response = await sendSelectorChat({ messages: transcript });
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: response.reply },
       ]);
+      if (response.selectedDocumentId) {
+        onSelect(response.selectedDocumentId);
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong.";
@@ -124,11 +114,11 @@ export function NdaChat({ data, onChange }: Props) {
   };
 
   return (
-    <Card className="flex h-[calc(100vh-9rem)] flex-col">
+    <Card className="mx-auto flex h-[calc(100vh-9rem)] w-full max-w-3xl flex-col">
       <CardHeader>
-        <CardTitle>Chat to draft your NDA</CardTitle>
+        <CardTitle>Pick a document</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Answer in your own words. The preview on the right updates as fields are filled.
+          Tell me what you need. I&apos;ll route you to the right template.
         </p>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
@@ -156,7 +146,7 @@ export function NdaChat({ data, onChange }: Props) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your reply..."
+            placeholder="e.g. 'I want a Mutual NDA' or 'I'm hiring a contractor'"
             rows={2}
             disabled={pending}
             aria-label="Message"

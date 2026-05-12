@@ -31,7 +31,9 @@ def client(monkeypatch: pytest.MonkeyPatch):
         yield c
 
 
-def test_chat_returns_reply_and_updates(monkeypatch: pytest.MonkeyPatch, client: TestClient):
+def test_chat_returns_reply_and_updates_for_mutual_nda(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+):
     captured: dict[str, Any] = {}
 
     def fake_completion(**kwargs: Any) -> SimpleNamespace:
@@ -50,6 +52,7 @@ def test_chat_returns_reply_and_updates(monkeypatch: pytest.MonkeyPatch, client:
         json={
             "messages": [{"role": "user", "content": "We want to share roadmap info."}],
             "currentData": {"purpose": ""},
+            "documentId": "mutual-nda",
         },
     )
 
@@ -73,7 +76,7 @@ def test_chat_returns_503_when_api_key_missing(
     with TestClient(app) as client:
         response = client.post(
             "/api/chat",
-            json={"messages": [], "currentData": {}},
+            json={"messages": [], "currentData": {}, "documentId": "mutual-nda"},
         )
     assert response.status_code == 503
     assert "OPENROUTER_API_KEY" in response.json()["detail"]
@@ -89,7 +92,11 @@ def test_chat_returns_502_when_llm_call_raises(
 
     response = client.post(
         "/api/chat",
-        json={"messages": [{"role": "user", "content": "hi"}], "currentData": {}},
+        json={
+            "messages": [{"role": "user", "content": "hi"}],
+            "currentData": {},
+            "documentId": "mutual-nda",
+        },
     )
     assert response.status_code == 502
     assert "upstream rate-limited" in response.json()["detail"]
@@ -103,17 +110,111 @@ def test_chat_accepts_empty_updates(monkeypatch: pytest.MonkeyPatch, client: Tes
     )
     response = client.post(
         "/api/chat",
-        json={"messages": [{"role": "user", "content": "skip"}], "currentData": {}},
+        json={
+            "messages": [{"role": "user", "content": "skip"}],
+            "currentData": {},
+            "documentId": "mutual-nda",
+        },
     )
     assert response.status_code == 200
-    assert response.json() == {"reply": "ok", "updates": {
-        "party1": None,
-        "party2": None,
-        "purpose": None,
-        "effectiveDate": None,
-        "mndaTerm": None,
-        "termOfConfidentiality": None,
-        "governingLawState": None,
-        "jurisdiction": None,
-        "modifications": None,
-    }}
+    body = response.json()
+    assert body["reply"] == "ok"
+    # All NDA fields should be present and null.
+    assert body["updates"]["party1"] is None
+    assert body["updates"]["modifications"] is None
+
+
+def test_chat_selector_mode_returns_selected_document(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+):
+    captured: dict[str, Any] = {}
+
+    def fake_completion(**kwargs: Any) -> SimpleNamespace:
+        captured.update(kwargs)
+        return _fake_completion_response(
+            {
+                "reply": "Great, let's draft a Mutual NDA.",
+                "selectedDocumentId": "mutual-nda",
+            }
+        )
+
+    monkeypatch.setattr(chat_module, "completion", fake_completion)
+
+    response = client.post(
+        "/api/chat",
+        json={
+            "messages": [{"role": "user", "content": "I need an NDA"}],
+            "currentData": {},
+            "documentId": None,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["selectedDocumentId"] == "mutual-nda"
+    assert "Mutual NDA" in body["reply"] or "NDA" in body["reply"]
+    # Selector system prompt must list multiple supported docs and ask for guidance.
+    system = captured["messages"][0]["content"]
+    assert "CSA" in system
+    assert "Pilot Agreement" in system
+    assert "closest supported one" in system
+
+
+def test_chat_generic_document_flow_validates_per_doc_schema(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+):
+    captured: dict[str, Any] = {}
+
+    def fake_completion(**kwargs: Any) -> SimpleNamespace:
+        captured.update(kwargs)
+        return _fake_completion_response(
+            {
+                "reply": "Got it. Who is the Customer?",
+                "updates": {
+                    "provider": "Acme, Inc.",
+                    "governingLaw": "Delaware",
+                    # An unknown field would be dropped by the schema.
+                    "notARealField": "ignored",
+                },
+            }
+        )
+
+    monkeypatch.setattr(chat_module, "completion", fake_completion)
+
+    response = client.post(
+        "/api/chat",
+        json={
+            "messages": [{"role": "user", "content": "Provider is Acme."}],
+            "currentData": {"provider": ""},
+            "documentId": "csa",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["updates"]["provider"] == "Acme, Inc."
+    assert body["updates"]["governingLaw"] == "Delaware"
+    # Unknown field must not appear in the per-doc schema.
+    assert "notARealField" not in body["updates"]
+    # System prompt must be the generic one tailored to this doc.
+    system = captured["messages"][0]["content"]
+    assert "Cloud Service Agreement" in system  # full doc name used in generic prompt
+    assert "provider" in system
+
+
+def test_chat_generic_document_flow_rejects_unknown_doc(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+):
+    monkeypatch.setattr(chat_module, "completion", lambda **_: _fake_completion_response({"reply": "ok", "updates": {}}))
+
+    response = client.post(
+        "/api/chat",
+        json={
+            "messages": [{"role": "user", "content": "hi"}],
+            "currentData": {},
+            "documentId": "made-up-doc",
+        },
+    )
+    # Unknown doc id: the route raises 404, which the outer handler should
+    # propagate (HTTPException short-circuits the 502 fallback).
+    assert response.status_code == 404

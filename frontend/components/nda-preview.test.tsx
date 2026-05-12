@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { NdaPreview } from "./nda-preview";
 import { defaultFormData } from "@/lib/nda-defaults";
 import type { NdaFormData } from "@/lib/nda-types";
@@ -95,6 +97,55 @@ describe("<NdaPreview />", () => {
   it("formats the effective date as a long-form English date", () => {
     render(<NdaPreview data={build({ effectiveDate: "2026-05-09" })} />);
     expect(screen.getByText("May 9, 2026")).toBeInTheDocument();
+  });
+
+  it("renders read-only date and term text when no onChange is provided", () => {
+    render(
+      <NdaPreview
+        data={build({ effectiveDate: "2026-05-09", mndaTerm: { kind: "years", years: 2 } })}
+      />,
+    );
+    expect(screen.queryByLabelText(/Effective Date/i)).not.toBeInTheDocument();
+    expect(screen.getByText("May 9, 2026")).toBeInTheDocument();
+  });
+
+  it("renders editable Effective Date and MNDA Term inputs when onChange is provided", () => {
+    const onChange = vi.fn();
+    render(<NdaPreview data={build()} onChange={onChange} />);
+    expect(screen.getByLabelText(/Effective Date$/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/MNDA Term in years/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/MNDA Term until terminated/)).toBeInTheDocument();
+  });
+
+  it("propagates Effective Date edits via onChange", async () => {
+    function Harness() {
+      const [data, setData] = useState<NdaFormData>(build());
+      return <NdaPreview data={data} onChange={setData} />;
+    }
+    const user = userEvent.setup();
+    render(<Harness />);
+    const input = screen.getByLabelText(/Effective Date$/) as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, "2027-01-15");
+    expect(input.value).toBe("2027-01-15");
+    expect(screen.getByText(/January 15, 2027/i)).toBeInTheDocument();
+  });
+
+  it("switches MNDA Term to until-terminated and back to years via the radio", async () => {
+    function Harness() {
+      const [data, setData] = useState<NdaFormData>(build());
+      return <NdaPreview data={data} onChange={setData} />;
+    }
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByLabelText(/MNDA Term until terminated/));
+    expect(
+      screen.getByLabelText(/MNDA Term until terminated/) as HTMLInputElement,
+    ).toBeChecked();
+    expect(screen.getByLabelText(/MNDA Term years/)).toBeDisabled();
+
+    await user.click(screen.getByLabelText(/MNDA Term in years/));
+    expect(screen.getByLabelText(/MNDA Term years/)).not.toBeDisabled();
   });
 
   it("forwards a ref to the document wrapper", () => {

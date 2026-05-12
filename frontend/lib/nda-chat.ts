@@ -44,6 +44,7 @@ export type ChatResponse = {
 export async function sendChat(args: {
   messages: ChatMessage[];
   currentData: NdaFormData;
+  documentId: string;
 }): Promise<ChatResponse> {
   const res = await fetch("/api/chat", {
     method: "POST",

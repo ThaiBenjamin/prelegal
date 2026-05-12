@@ -128,4 +128,33 @@ describe("<NdaChat />", () => {
     expect(sendButton).toBeDisabled();
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
+
+  it("returns focus to the textarea after the assistant replies", async () => {
+    mockFetchOnce({ reply: "Anything else?", updates: {} });
+    const user = userEvent.setup();
+    render(<Harness />);
+    const composer = screen.getByLabelText(/Message/i);
+    await user.type(composer, "first answer");
+    await user.click(screen.getByRole("button", { name: /Send/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Anything else\?/i)).toBeInTheDocument();
+    });
+    // Focus should snap back to the composer once the request resolves.
+    expect(document.activeElement).toBe(composer);
+  });
+
+  it("forwards documentId to the chat API", async () => {
+    mockFetchOnce({ reply: "ok", updates: {} });
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.type(screen.getByLabelText(/Message/i), "hi");
+    await user.click(screen.getByRole("button", { name: /Send/i }));
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalled();
+    });
+    const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse((call[1] as RequestInit).body as string);
+    expect(body.documentId).toBe("mutual-nda");
+  });
 });

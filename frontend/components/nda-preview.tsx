@@ -5,7 +5,11 @@ import type { NdaFormData } from "@/lib/nda-types";
 import { fallback, formatHumanDate, formatYears } from "@/lib/nda-format";
 import { NDA_BLOCK_ATTR, NDA_PAGE_ATTR } from "@/lib/nda-selectors";
 
-type Props = { data: NdaFormData; ref?: Ref<HTMLDivElement> };
+type Props = {
+  data: NdaFormData;
+  onChange?: (next: NdaFormData) => void;
+  ref?: Ref<HTMLDivElement>;
+};
 
 const CrossRef = ({ children }: { children: React.ReactNode }) => (
   <span className="italic text-[#1d4ed8]">{children}</span>
@@ -84,7 +88,7 @@ function PartyBlock({ label, party }: { label: string; party: NdaFormData["party
   );
 }
 
-export function NdaPreview({ data, ref }: Props) {
+export function NdaPreview({ data, onChange, ref }: Props) {
   const purpose = fallback(data.purpose, "[Purpose]");
   const effectiveDate = formatHumanDate(data.effectiveDate);
   const governingLaw = fallback(data.governingLawState, "[Fill in state]");
@@ -92,6 +96,26 @@ export function NdaPreview({ data, ref }: Props) {
     data.jurisdiction,
     "[Fill in city or county and state]",
   );
+  const editable = onChange !== undefined;
+  const setEffectiveDate = (iso: string) =>
+    onChange?.({ ...data, effectiveDate: iso });
+  const setMndaTermYears = (years: number) =>
+    onChange?.({
+      ...data,
+      mndaTerm: { kind: "years", years: Math.max(1, years) },
+    });
+  const setMndaTermKind = (kind: "years" | "until-terminated") =>
+    onChange?.({
+      ...data,
+      mndaTerm:
+        kind === "years"
+          ? {
+              kind: "years",
+              years:
+                data.mndaTerm.kind === "years" ? data.mndaTerm.years : 1,
+            }
+          : { kind: "until-terminated" },
+    });
   const mndaTermText =
     data.mndaTerm.kind === "years"
       ? `Expires ${formatYears(data.mndaTerm.years)} from the Effective Date.`
@@ -131,12 +155,72 @@ export function NdaPreview({ data, ref }: Props) {
 
         <Block>
           <SectionHeading>Effective Date</SectionHeading>
-          <p>{effectiveDate}</p>
+          {editable ? (
+            <p>
+              <input
+                type="date"
+                aria-label="Effective Date"
+                value={data.effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+                className="border-b border-dotted border-gray-400 bg-transparent font-serif text-[11pt] focus:outline-none focus:border-solid focus:border-[#209dd7]"
+              />
+              <span className="ml-3 text-xs text-gray-500">
+                ({effectiveDate})
+              </span>
+            </p>
+          ) : (
+            <p>{effectiveDate}</p>
+          )}
         </Block>
 
         <Block>
           <SectionHeading>MNDA Term</SectionHeading>
-          <p>{mndaTermText}</p>
+          {editable ? (
+            <div className="space-y-1">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="mnda-term-kind"
+                  checked={data.mndaTerm.kind === "years"}
+                  onChange={() => setMndaTermKind("years")}
+                  aria-label="MNDA Term in years"
+                />
+                <span>Expires</span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  aria-label="MNDA Term years"
+                  value={
+                    data.mndaTerm.kind === "years" ? data.mndaTerm.years : 1
+                  }
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n)) setMndaTermYears(n);
+                  }}
+                  onFocus={() => setMndaTermKind("years")}
+                  disabled={data.mndaTerm.kind !== "years"}
+                  className="w-16 border-b border-dotted border-gray-400 bg-transparent text-center font-serif text-[11pt] focus:outline-none focus:border-solid focus:border-[#209dd7] disabled:opacity-50"
+                />
+                <span>year(s) from the Effective Date.</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="mnda-term-kind"
+                  checked={data.mndaTerm.kind === "until-terminated"}
+                  onChange={() => setMndaTermKind("until-terminated")}
+                  aria-label="MNDA Term until terminated"
+                />
+                <span>
+                  Continues until terminated in accordance with the terms of
+                  this MNDA.
+                </span>
+              </label>
+            </div>
+          ) : (
+            <p>{mndaTermText}</p>
+          )}
         </Block>
 
         <Block>

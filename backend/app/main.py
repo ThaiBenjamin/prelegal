@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .db import init_db
-from .routes import chat, health
+from .routes import chat, documents, health
 
 
 def _load_env() -> None:
@@ -59,6 +59,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Prelegal", lifespan=lifespan)
 app.include_router(health.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
 
 _static_dir = _resolve_static_dir()
 if _static_dir is not None:
