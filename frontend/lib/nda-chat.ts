@@ -82,7 +82,10 @@ function mergeDuration<C extends { kind: "years"; years: number } | { kind: A },
 ): C {
   if (!patch) return current;
   if (patch.kind === "years") {
-    const fallback = current.kind === "years" ? current.years : 1;
+    const fallback =
+      current.kind === "years"
+        ? (current as { kind: "years"; years: number }).years
+        : 1;
     const years = Math.max(1, patch.years ?? fallback);
     return { kind: "years", years } as C;
   }
