@@ -6,6 +6,7 @@
  * reflects what the AI has captured.
  */
 
+import { apiFetch } from "./api";
 import type { NdaFormData, PartyInfo } from "./nda-types";
 
 export type ChatRole = "user" | "assistant";
@@ -41,27 +42,12 @@ export type ChatResponse = {
   updates: NdaUpdates;
 };
 
-export async function sendChat(args: {
+export function sendChat(args: {
   messages: ChatMessage[];
   currentData: NdaFormData;
   documentId: string;
 }): Promise<ChatResponse> {
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(args),
-  });
-  if (!res.ok) {
-    let detail = `Request failed: ${res.status}`;
-    try {
-      const body = (await res.json()) as { detail?: unknown };
-      if (typeof body?.detail === "string") detail = body.detail;
-    } catch {
-      // keep default detail
-    }
-    throw new Error(detail);
-  }
-  return (await res.json()) as ChatResponse;
+  return apiFetch<ChatResponse>("/api/chat", { method: "POST", body: args });
 }
 
 function mergeParty(

@@ -1,18 +1,30 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { clearUser, loadUser, saveUser } from "./auth";
+import {
+  clearSession,
+  getAuthHeader,
+  loadToken,
+  loadUser,
+  saveSession,
+} from "./auth";
 
-describe("auth (client-side user store)", () => {
+const SAMPLE = { id: 7, name: "Alice", email: "alice@example.com" };
+
+describe("auth (client-side session store)", () => {
   afterEach(() => {
     window.localStorage.clear();
   });
 
   it("returns null when nothing is stored", () => {
     expect(loadUser()).toBeNull();
+    expect(loadToken()).toBeNull();
+    expect(getAuthHeader()).toEqual({});
   });
 
-  it("saves and loads a user", () => {
-    saveUser({ name: "Alice" });
-    expect(loadUser()).toEqual({ name: "Alice" });
+  it("persists both the user and the token on saveSession", () => {
+    saveSession(SAMPLE, "tok-abc");
+    expect(loadUser()).toEqual(SAMPLE);
+    expect(loadToken()).toBe("tok-abc");
+    expect(getAuthHeader()).toEqual({ Authorization: "Bearer tok-abc" });
   });
 
   it("ignores malformed JSON", () => {
@@ -20,7 +32,7 @@ describe("auth (client-side user store)", () => {
     expect(loadUser()).toBeNull();
   });
 
-  it("rejects entries with an empty name", () => {
+  it("rejects users that are missing required fields", () => {
     window.localStorage.setItem(
       "prelegal:user",
       JSON.stringify({ name: "" }),
@@ -28,9 +40,10 @@ describe("auth (client-side user store)", () => {
     expect(loadUser()).toBeNull();
   });
 
-  it("clears the stored user", () => {
-    saveUser({ name: "Bob" });
-    clearUser();
+  it("clears both the user and the token on clearSession", () => {
+    saveSession(SAMPLE, "tok-abc");
+    clearSession();
     expect(loadUser()).toBeNull();
+    expect(loadToken()).toBeNull();
   });
 });

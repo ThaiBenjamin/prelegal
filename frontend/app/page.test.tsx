@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import Home from "./page";
-import { saveUser, clearUser } from "@/lib/auth";
+import { saveSession, clearSession } from "@/lib/auth";
 
 function jsonResponse(body: object, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
@@ -35,11 +35,20 @@ function textResponse(body: string, init?: ResponseInit) {
 }
 
 function mockApi() {
-  // Default mock: any call returns a benign chat reply with no selection.
   globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.includes("/standard-terms")) {
       return textResponse("# Standard Terms\n\n1. Hello.\n");
+    }
+    if (url.includes("/api/saved-documents")) {
+      // Autosave upsert returns a fresh row id.
+      return jsonResponse({
+        id: 1,
+        documentId: "mutual-nda",
+        title: "Mutual NDA",
+        updatedAt: new Date().toISOString(),
+        fields: {},
+      });
     }
     return jsonResponse({ reply: "ok", selectedDocumentId: null });
   }) as unknown as typeof fetch;
@@ -47,8 +56,6 @@ function mockApi() {
 
 async function pickMutualNda() {
   const user = userEvent.setup();
-  // Once the selector is visible, send a message that the (mocked) selector
-  // resolves to mutual-nda.
   (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
     jsonResponse({
       reply: "Great, drafting the Mutual NDA.",
@@ -62,7 +69,7 @@ async function pickMutualNda() {
   await user.click(screen.getByRole("button", { name: /Send/i }));
   await waitFor(() =>
     expect(
-      screen.getByText("Mutual Non-Disclosure Agreement Creator"),
+      screen.getByRole("button", { name: /Download Mutual NDA PDF/i }),
     ).toBeInTheDocument(),
   );
 }
@@ -71,8 +78,12 @@ describe("<Home /> (page integration)", () => {
   beforeEach(() => {
     downloadMock.mockClear();
     routerReplace.mockClear();
-    clearUser();
-    saveUser({ name: "Test User" });
+    routerPush.mockClear();
+    clearSession();
+    saveSession(
+      { id: 1, name: "Test User", email: "test@example.com" },
+      "test-token",
+    );
     mockApi();
   });
 
@@ -83,38 +94,55 @@ describe("<Home /> (page integration)", () => {
   it("starts in document-selector mode and lists supported documents", async () => {
     render(<Home />);
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "Prelegal" }),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("Pick a document")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Pick a document")).toBeInTheDocument();
-    // Selector greeting bullet-lists supported docs.
     expect(screen.getByText(/Mutual NDA — Bilateral/i)).toBeInTheDocument();
     expect(screen.getByText(/CSA — Standard terms/i)).toBeInTheDocument();
-    // No download button before a document is picked.
     expect(
       screen.queryByRole("button", { name: /Download/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("redirects to /login when no user is in storage", async () => {
-    clearUser();
+  it("redirects to /login when no user or token is in storage", async () => {
+    clearSession();
     render(<Home />);
     await waitFor(() => expect(routerReplace).toHaveBeenCalledWith("/login"));
   });
 
-  it("shows the signed-in name and a Sign out action", async () => {
+  it("shows the signed-in name, navigation, and Sign out action", async () => {
     render(<Home />);
     await waitFor(() =>
       expect(screen.getByText(/Signed in as/i)).toBeInTheDocument(),
     );
     expect(screen.getByText("Test User")).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: /My documents/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("button", { name: /Sign out/i }),
     ).toBeInTheDocument();
   });
 
-  it("clears the user and redirects on Sign out", async () => {
+  it("renders the draft-only disclaimer banner", async () => {
+    render(<Home />);
+    await waitFor(() =>
+      expect(screen.getByText(/Draft only\./)).toBeInTheDocument(),
+    );
+  });
+
+  it("navigates to /documents when the My documents nav button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /My documents/i }),
+      ).toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole("button", { name: /My documents/i }));
+    expect(routerPush).toHaveBeenCalledWith("/documents");
+  });
+
+  it("clears the session and redirects on Sign out", async () => {
     const user = userEvent.setup();
     render(<Home />);
     await waitFor(() =>
@@ -124,6 +152,7 @@ describe("<Home /> (page integration)", () => {
     );
     await user.click(screen.getByRole("button", { name: /Sign out/i }));
     expect(window.localStorage.getItem("prelegal:user")).toBeNull();
+    expect(window.localStorage.getItem("prelegal:token")).toBeNull();
     expect(routerReplace).toHaveBeenCalledWith("/login");
   });
 
@@ -143,46 +172,36 @@ describe("<Home /> (page integration)", () => {
     const user = userEvent.setup();
     render(<Home />);
     await pickMutualNda();
-
-    const button = screen.getByRole("button", {
-      name: /Download Mutual NDA PDF/i,
-    });
-    await user.click(button);
-
+    await user.click(
+      screen.getByRole("button", { name: /Download Mutual NDA PDF/i }),
+    );
     await waitFor(() => expect(downloadMock).toHaveBeenCalledTimes(1));
     const [, filename] = downloadMock.mock.calls[0];
     expect(filename).toBe("mutual-nda-party1-party2.pdf");
   });
 
-  it("passes the preview DOM element to the download helper", async () => {
+  it("includes the captured disclaimer block in the preview DOM", async () => {
     const user = userEvent.setup();
     render(<Home />);
     await pickMutualNda();
-
-    const button = screen.getByRole("button", {
-      name: /Download Mutual NDA PDF/i,
-    });
-    await user.click(button);
-
+    await user.click(
+      screen.getByRole("button", { name: /Download Mutual NDA PDF/i }),
+    );
     await waitFor(() => expect(downloadMock).toHaveBeenCalledTimes(1));
     const [element] = downloadMock.mock.calls[0];
     expect(element).toBeInstanceOf(HTMLElement);
     expect(
-      (element as HTMLElement).querySelector("[data-nda-page]"),
-    ).not.toBeNull();
+      (element as HTMLElement).textContent ?? "",
+    ).toMatch(/DRAFT — SUBJECT TO LEGAL REVIEW/);
   });
 
   it("returns to the selector when 'Pick a different document' is clicked", async () => {
     const user = userEvent.setup();
     render(<Home />);
     await pickMutualNda();
-
     await user.click(
       screen.getByRole("button", { name: /Pick a different document/i }),
     );
-    expect(
-      screen.getByRole("heading", { name: "Prelegal" }),
-    ).toBeInTheDocument();
     expect(screen.getByText("Pick a document")).toBeInTheDocument();
   });
 });

@@ -82,6 +82,7 @@ describe("sendChat", () => {
     const result = await sendChat({
       messages: [{ role: "user", content: "hello" }],
       currentData: defaultFormData,
+      documentId: "mutual-nda",
     });
 
     expect(result.reply).toBe("hi");
@@ -103,7 +104,11 @@ describe("sendChat", () => {
       }),
     );
     await expect(
-      sendChat({ messages: [], currentData: defaultFormData }),
+      sendChat({
+        messages: [],
+        currentData: defaultFormData,
+        documentId: "mutual-nda",
+      }),
     ).rejects.toThrow("rate limited");
   });
 
@@ -112,7 +117,11 @@ describe("sendChat", () => {
       new Response("oops", { status: 500 }),
     );
     await expect(
-      sendChat({ messages: [], currentData: defaultFormData }),
+      sendChat({
+        messages: [],
+        currentData: defaultFormData,
+        documentId: "mutual-nda",
+      }),
     ).rejects.toThrow(/500/);
   });
 });

@@ -7,6 +7,7 @@ import { fetchStandardTerms } from "@/lib/generic-chat";
 import { renderStandardTermsMarkdown } from "@/lib/standard-terms-md";
 import { NDA_BLOCK_ATTR, NDA_PAGE_ATTR } from "@/lib/nda-selectors";
 import { formatHumanDate } from "@/lib/nda-format";
+import { DocumentDisclaimer } from "@/components/document-disclaimer";
 
 type Props = {
   doc: Document;
@@ -138,6 +139,7 @@ export function GenericPreview({ doc, data, onChange, ref }: Props) {
       className="mx-auto flex flex-col gap-6 bg-white text-black"
     >
       <Page kind="cover">
+        <DocumentDisclaimer />
         <Block>
           <h1 className="mb-3 text-center text-2xl font-bold">{doc.name}</h1>
           <p className="text-sm">

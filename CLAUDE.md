@@ -9,10 +9,15 @@ The available documents are covered in the catalog.json file in the project root
 @catalog.json
 
 The current implementation covers PL-4 (V1 foundation) + PL-5 (AI chat for the
-Mutual NDA). Users sign in with a fake (localStorage) login, then chat with an
-LLM that fills the NDA fields conversationally and lets them download a PDF.
-None of the other 11 documents, real authentication, or document persistence
-have been built yet.
+Mutual NDA) + PL-6 (all 11 supported document types) + PL-7 (real sign-up /
+sign-in, document persistence, "draft" disclaimers, brand polish). Users
+register with email + password, chat with a document-selector that recommends
+the right template (or the closest match for unsupported requests), then chat
+with an LLM that fills the chosen document's fields conversationally and lets
+them download a PDF. Drafts auto-save as the user chats and can be reopened
+from a "My documents" page. The SQLite database (users + saved documents) is
+still reset on every container restart — accounts and drafts only persist for
+the lifetime of a single container, by design.
 
 ## Development process
 
@@ -80,7 +85,7 @@ Backend available at http://localhost:8000
   Windows variants check `$LASTEXITCODE` and fail loudly.
 - `.gitattributes` pins LF on `*.sh`, CRLF on `*.ps1`.
 
-**Added in PL-5 (AI chat)**
+**Added in PL-5 (AI chat for the Mutual NDA)**
 - `backend/app/routes/chat.py` — `POST /api/chat` wraps a LiteLLM →
   OpenRouter → Cerebras call (`openrouter/openai/gpt-oss-120b`,
   `response_format=ChatResponse`) and returns `{reply, updates}` per turn.
@@ -91,16 +96,102 @@ Backend available at http://localhost:8000
   The old form (`nda-form.tsx`) is gone; the live preview + Download PDF
   flow is unchanged.
 
-**Working product surface**
-- Land on `/`, get redirected to `/login` if no name is in localStorage.
-- Enter a name → land on the Mutual NDA creator: chat on the left,
-  live preview on the right, "Download PDF" in the header. The
-  assistant greets the user, asks for the NDA fields conversationally,
-  and the preview updates as it captures answers.
+**Added in PL-6 (all 11 supported documents + UX polish)**
+- `backend/app/documents.py` + `frontend/lib/documents.ts` — parallel
+  catalog of all 11 supported documents (Mutual NDA, CSA, Design Partner
+  Agreement, SLA, PSA, DPA, Software License Agreement, Partnership
+  Agreement, Pilot Agreement, BAA, AI Addendum) with their cover-page
+  field schemas (name/label/kind/placeholder).
+- `backend/app/routes/documents.py` — `GET /api/documents` lists the
+  catalog; `GET /api/documents/{id}/standard-terms` returns the template
+  markdown (read from `templates/`).
+- `backend/app/routes/chat.py` — `/api/chat` now dispatches by
+  `documentId`: `null` → document selector (`SelectorResponse`),
+  `mutual-nda` → existing rich `NdaUpdates` schema, anything else → a
+  generic per-document response model built dynamically with
+  `pydantic.create_model` so the LLM's structured output is constrained
+  to that document's fields. System prompts now also require a follow-up
+  question while any field is unfilled.
+- `frontend/components/doc-selector-chat.tsx` — chat-first selector that
+  greets the user with the supported docs and recommends the closest
+  match for unsupported requests; `app/page.tsx` is now a state machine
+  (selector → creator) with a "Pick a different document" header action.
+- `frontend/components/generic-chat.tsx` + `generic-preview.tsx` +
+  `lib/generic-chat.ts` + `lib/standard-terms-md.tsx` — generic chat,
+  generic cover-page preview (auto-rendered from `Document.fields`),
+  and a small markdown renderer for the standard terms. Used for every
+  document except the Mutual NDA (which keeps its bespoke `NdaPreview`).
+- `frontend/components/nda-chat.tsx` + `doc-selector-chat.tsx` +
+  `generic-chat.tsx` — all three chat surfaces now refocus the textarea
+  after each turn so the user can answer the next question without
+  grabbing the mouse.
+- `frontend/components/nda-preview.tsx` — Effective Date and MNDA Term
+  are inline-editable when an `onChange` handler is provided, giving
+  the user a manual override of the chat-driven values.
 
-**Not yet built** (intentional — out of scope for PL-5)
-- The other 11 templates from `catalog.json`.
-- Real authentication (the `users` table exists as a seam; no endpoint writes
-  to it yet).
-- Document and conversation persistence.
+**Added in PL-7 (real accounts, document history, polish, disclaimer)**
+- `backend/app/db.py` — schema now drops + recreates both `users` and a
+  new `saved_documents` table. `users` gained `password_hash` and a
+  `UNIQUE` constraint on `email`. `saved_documents` stores per-user
+  drafts: `(id, user_id FK, document_id, title, fields_json, updated_at)`.
+- `backend/app/auth.py` — bcrypt hashing, HS256 JWTs (7-day TTL,
+  `JWT_SECRET` from env with an ephemeral fallback), and a
+  `current_user_id` FastAPI dependency that validates
+  `Authorization: Bearer <token>`.
+- `backend/app/routes/auth.py` — `POST /api/auth/signup`,
+  `POST /api/auth/signin`, `GET /api/auth/me`. Returns `{token, user}`.
+- `backend/app/routes/saved_documents.py` — `GET /api/saved-documents`,
+  `POST /api/saved-documents` (upsert by optional id),
+  `GET /api/saved-documents/{id}`, `DELETE /api/saved-documents/{id}`.
+  All require auth and filter by `user_id`.
+- `frontend/lib/auth.ts` — replaced the name-only localStorage stub with
+  `saveSession / clearSession / loadUser / loadToken / getAuthHeader`.
+  Persists `{id, name, email}` plus the JWT.
+- `frontend/lib/api.ts` — single fetch wrapper that attaches the bearer
+  token and surfaces FastAPI's `{detail}` error messages.
+- `frontend/lib/saved-documents.ts` — `useAutosaveDocument` hook with an
+  800ms debounce upsert; tracks the row id in a ref so subsequent saves
+  are `UPDATE`s. Also exports `buildSavedDocumentTitle`, list, get, and
+  delete helpers.
+- `frontend/app/login/page.tsx` — full rewrite with sign-in / sign-up
+  tabs, email + password fields, and a brand-styled card on a navy
+  gradient background.
+- `frontend/app/documents/page.tsx` — new "My documents" page listing
+  the user's saved drafts; `Open` routes back to `/` with
+  `?openDoc=<id>` so the creator rehydrates from saved fields.
+- `frontend/app/page.tsx` — navy header with a wordmark and nav links,
+  disclaimer banner under the header, autosave wired into both
+  creators, and `?openDoc` support that pulls the row, picks the right
+  doc, and seeds form state.
+- `frontend/components/disclaimer-banner.tsx` — app-shell banner with
+  "Draft only" copy; rendered under the header on every signed-in page.
+- `frontend/components/document-disclaimer.tsx` — `[data-nda-block]`
+  block at the top of every preview's cover page so the "DRAFT —
+  SUBJECT TO LEGAL REVIEW" warning is captured into page 1 of the PDF.
+- `frontend/app/globals.css` — brand palette wired into the shadcn
+  token system: `--primary` = blue (`#209dd7`), `--secondary` = purple
+  (`#753991`), `--accent` = yellow (`#ecad0a`). Adds `--brand-*` CSS
+  vars for direct use in the header and the disclaimer banner.
+
+**Working product surface**
+- Land on `/`, get redirected to `/login` if no token is in localStorage.
+- `/login` — sign in (email + password) or sign up (name + email +
+  password). On success the JWT is stored and the user is sent to `/`.
+- `/` — document selector by default; pick a document via chat, the
+  creator opens with the chat on the left and the live preview on the
+  right. Every chat turn debounces a save to `/api/saved-documents`.
+- `/documents` — list of the user's saved drafts; `Open` rehydrates the
+  creator with the saved field values.
+- "Draft only" banner under the header on every signed-in page; a
+  "DRAFT — SUBJECT TO LEGAL REVIEW" block inside every preview that
+  travels with the downloaded PDF.
+
+**Not yet built** (intentional — out of scope for PL-7)
+- Persistence across server restarts (the DB is still wiped on every
+  container start per the ticket).
+- Conversation transcript persistence (only field state is saved;
+  reopening a saved document starts a fresh chat thread).
+- Sharing the chat-shell scaffolding across `nda-chat`,
+  `doc-selector-chat`, and `generic-chat` (still duplicated; remains a
+  follow-up refactor).
 

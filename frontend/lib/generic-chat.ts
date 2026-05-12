@@ -6,6 +6,8 @@
  * field schema. `applyDocUpdates` merges those into the local form state.
  */
 
+import { apiFetch, ApiError } from "./api";
+import { getAuthHeader } from "./auth";
 import type { Document } from "./documents";
 
 export type ChatRole = "user" | "assistant";
@@ -29,23 +31,8 @@ export type SelectorResponse = {
   selectedDocumentId: string | null;
 };
 
-async function postChat<T>(body: unknown): Promise<T> {
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    let detail = `Request failed: ${res.status}`;
-    try {
-      const data = (await res.json()) as { detail?: unknown };
-      if (typeof data?.detail === "string") detail = data.detail;
-    } catch {
-      // keep default
-    }
-    throw new Error(detail);
-  }
-  return (await res.json()) as T;
+function postChat<T>(body: unknown): Promise<T> {
+  return apiFetch<T>("/api/chat", { method: "POST", body });
 }
 
 export function sendDocChat(args: {
@@ -92,10 +79,13 @@ export function applyDocUpdates(
 }
 
 export async function fetchStandardTerms(documentId: string): Promise<string> {
-  const res = await fetch(`/api/documents/${documentId}/standard-terms`);
+  const res = await fetch(`/api/documents/${documentId}/standard-terms`, {
+    headers: getAuthHeader(),
+  });
   if (!res.ok) {
-    throw new Error(
+    throw new ApiError(
       `Could not load standard terms (${res.status}): ${await res.text()}`,
+      res.status,
     );
   }
   return await res.text();

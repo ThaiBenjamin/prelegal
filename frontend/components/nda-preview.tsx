@@ -4,6 +4,7 @@ import type { Ref } from "react";
 import type { NdaFormData } from "@/lib/nda-types";
 import { fallback, formatHumanDate, formatYears } from "@/lib/nda-format";
 import { NDA_BLOCK_ATTR, NDA_PAGE_ATTR } from "@/lib/nda-selectors";
+import { DocumentDisclaimer } from "@/components/document-disclaimer";
 
 type Props = {
   data: NdaFormData;
@@ -132,6 +133,7 @@ export function NdaPreview({ data, onChange, ref }: Props) {
       className="mx-auto flex flex-col gap-6 bg-white text-black"
     >
       <Page kind="cover">
+        <DocumentDisclaimer />
         <Block>
           <h1 className="mb-3 text-center text-2xl font-bold">
             Mutual Non-Disclosure Agreement

@@ -78,10 +78,13 @@ describe("<GenericPreview />", () => {
 
   it("loads the standard terms markdown for the selected document", async () => {
     render(<Harness />);
+    const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     await waitFor(() =>
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/documents/pilot-agreement/standard-terms",
-      ),
+      expect(
+        fetchMock.mock.calls.some(
+          ([url]) => url === "/api/documents/pilot-agreement/standard-terms",
+        ),
+      ).toBe(true),
     );
   });
 });
