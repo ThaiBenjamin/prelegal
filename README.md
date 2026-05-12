@@ -15,8 +15,9 @@ land on after signing in.
 
 ## Run with Docker
 
-You need Docker (and Docker Compose v2) installed. Then, from the
-project root:
+You need Docker (and Docker Compose v2) installed **and the Docker
+daemon running** — on Windows/macOS this means Docker Desktop must be
+launched before invoking the scripts. Then, from the project root:
 
 ### macOS
 
