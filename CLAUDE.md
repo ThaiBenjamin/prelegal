@@ -33,6 +33,21 @@ When writing code to make calls to LLMs, use your Cerebras skill to use LiteLLM 
 
 There is an OPENROUTER_API_KEY in the .env file in the project root.
 
+## Environment variables
+
+- `OPENROUTER_API_KEY` (required for `/api/chat`) — loaded from `.env`
+  in local dev via `python-dotenv`; injected by `docker-compose`'s
+  `env_file: .env` in Docker.
+- `JWT_SECRET` (optional) — signing key for auth JWTs. If unset, the
+  backend generates an ephemeral 32-byte secret at process start, which
+  means tokens are invalidated across restarts. Consistent with the
+  ephemeral-DB design.
+- `PRELEGAL_DB_PATH` (optional) — overrides the SQLite location.
+  Docker sets `/tmp/prelegal.db`; Windows local dev defaults to
+  `backend/data/prelegal.db`.
+- `PRELEGAL_STATIC_DIR` (optional) — overrides where the FastAPI app
+  looks for `frontend/out/` when mounting the static export.
+
 ## Technical design
 
 The entire project should be packaged into a Docker container.  
@@ -58,6 +73,17 @@ scripts/start-windows.ps1
 scripts/stop-windows.ps1
 ```
 Backend available at http://localhost:8000
+
+## Testing
+
+- Backend: `cd backend && uv run pytest` (33 tests across health,
+  chat, documents, auth, saved-documents).
+- Frontend: `cd frontend && npm test` (111 tests across 16 files).
+- Frontend lint + type-check: `npm run lint` and `npx tsc --noEmit`.
+- Frontend static build: `npm run build` produces `frontend/out/`.
+- End-to-end: `scripts/start-windows.ps1` (or `start-{mac,linux}.sh`)
+  builds the frontend on the host and runs the Docker stack on
+  `:8000`. `scripts/stop-*` tears it down.
 
 ## Color Scheme
 - Accent Yellow: `#ecad0a`
